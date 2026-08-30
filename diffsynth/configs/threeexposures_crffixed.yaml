@@ -3,7 +3,7 @@ encode_decoder_mode: "seperate_debevec"
 skip_val: False
 input_type: "crf"
 output_path: "./models/train/three_exposures_crfchanging"
-dataset_base_path: "/data2/saikiran.tedla/hdrvideo/diff/data/stuttgart" # Base path of the dataset
+dataset_base_path: "./data/stuttgart" # Base path of the dataset
 dataset_metadata_path: null
 max_pixels: 921600
 height: 704 #512 #12 #512 #512 #704 #512
@@ -11,9 +11,9 @@ width: 1280 #768 #768 #768 #768
 num_frames: 3
 data_file_keys: "image,video"
 dataset_repeat: 1
-model_paths: null #[\"/data2/saikiran.tedla/hdrvideo/diff/models/train/finetune_decoder_justmerger/checkpoints/epoch-199.safetensors\"] # Paths to load models. In JSON format.
+model_paths: null #[\"./models/train/finetune_decoder_justmerger/checkpoints/epoch-199.safetensors\"] # Paths to load models. In JSON format.
 model_id_with_origin_paths: "Wan-AI/Wan2.2-TI2V-5B:models_t5_umt5-xxl-enc-bf16.pth,Wan-AI/Wan2.2-TI2V-5B:diffusion_pytorch_model*.safetensors,Wan-AI/Wan2.2-TI2V-5B:Wan2.2_VAE.pth"
-decoder_path: "/data2/saikiran.tedla/hdrvideo/diff/models/train/finetune_decoder_justmerger/checkpoints/epoch-199.safetensors"
+decoder_path: "./models/train/finetune_decoder_justmerger/checkpoints/epoch-199.safetensors"
 learning_rate: 0.00003
 num_epochs: 201
 remove_prefix_in_ckpt: "pipe."

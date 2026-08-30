@@ -3,8 +3,9 @@ import sys
 import yaml
 from pathlib import Path
 
-sys.path.append("/data2/saikiran.tedla/hdrvideo/diff")
-sys.path.append("/data2/saikiran.tedla/hdrvideo/diff/examples/wanvideo/model_training")
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+sys.path.append(str(_REPO_ROOT))
+sys.path.append(str(_REPO_ROOT / "examples" / "wanvideo" / "model_training"))
 
 from diffsynth import load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
@@ -143,7 +144,7 @@ def load_yaml_config(args, config_path):
 
     return args
 
-#[\"/data2/saikiran.tedla/hdrvideo/diff/models/train/Wan2.2-TI2V-5B_full/epoch-0.safetensors\"]"
+#[\"./models/train/Wan2.2-TI2V-5B_full/epoch-0.safetensors\"]"
 def convert_strlist_to_jsonlist(strlist):
     if strlist is None:
         return None

@@ -1,24 +1,31 @@
+"""
+Manual smoke test: run one Stuttgart scene through the multi-exposure model
+and dump the raw VAE output as a video. Update REPO_ROOT/checkpoint/scene
+below to match your setup.
+"""
 import torch
 import sys
-sys.path.append("/data2/saikiran.tedla/hdrvideo/diff")
+from pathlib import Path
 
+REPO_ROOT = Path(__file__).resolve().parent
+sys.path.append(str(REPO_ROOT))
 
 from PIL import Image
 from diffsynth import save_video, VideoData, load_state_dict
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig
 from modelscope import dataset_snapshot_download
 
-from diff.diffsynth.trainers.stuttgart_dataset import StuttgartDataset
+from diffsynth.trainers.stuttgart_dataset import StuttgartDataset
 
-
-
+DATASET_BASE_PATH = REPO_ROOT / "data" / "stuttgart" / "carousel_fireworks_02"
+CHECKPOINT_PATH = REPO_ROOT / "models" / "train" / "three_exposures" / "checkpoints" / "epoch-19.safetensors"
 
 
 dataset = StuttgartDataset(
-    base_path="/data2/saikiran.tedla/hdrvideo/diff/data/stuttgart/carousel_fireworks_02",
+    base_path=str(DATASET_BASE_PATH),
     repeat=1,
     main_data_operator=StuttgartDataset.default_video_operator(
-        base_path="/data2/saikiran.tedla/hdrvideo/diff/data/stuttgart/carousel_fireworks_02",
+        base_path=str(DATASET_BASE_PATH),
         max_pixels=1280*720,
         height=480,
         width=832,
@@ -45,7 +52,7 @@ pipe = WanVideoPipeline.from_pretrained(
         ModelConfig(model_id="Wan-AI/Wan2.2-TI2V-5B", origin_file_pattern="Wan2.2_VAE.pth", offload_device="cpu", skip_download=True),
     ],
 )
-state_dict = load_state_dict("/data2/saikiran.tedla/hdrvideo/diff/models/train/three_exposures/checkpoints/epoch-19.safetensors")
+state_dict = load_state_dict(str(CHECKPOINT_PATH))
 pipe.dit.load_state_dict(state_dict)
 pipe.enable_vram_management()
 

@@ -1,7 +1,7 @@
 name: "finetune_decoder_mergeragain"
 encode_decoder_mode: "seperate_train"
-output_path: "/data2/saikiran.tedla/hdrvideo/diff/models/train/finetune_decoder_mergeragain"
-dataset_base_path: "/data2/saikiran.tedla/hdrvideo/diff/data/stuttgart" # Base path of the dataset
+output_path: "./models/train/finetune_decoder_mergeragain"
+dataset_base_path: "./data/stuttgart" # Base path of the dataset
 dataset_metadata_path: null
 max_pixels: 921600
 height: 704

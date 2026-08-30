@@ -4,7 +4,7 @@ import sys
 import yaml
 from pathlib import Path
 import wandb
-sys.path.append("/data2/saikiran.tedla/hdrvideo/diff")
+sys.path.append(str(Path(__file__).resolve().parents[3]))
 
 from diffsynth import load_state_dict, save_video
 from diffsynth.pipelines.wan_video_new import WanVideoPipeline, ModelConfig, WanVideoUnit_PromptEmbedder
@@ -230,7 +230,7 @@ def load_yaml_config(args, config_path):
 
     return args
 
-#[\"/data2/saikiran.tedla/hdrvideo/diff/models/train/Wan2.2-TI2V-5B_full/epoch-0.safetensors\"]"
+#[\"./models/train/Wan2.2-TI2V-5B_full/epoch-0.safetensors\"]"
 def convert_strlist_to_jsonlist(strlist):
     if strlist is None:
         return None

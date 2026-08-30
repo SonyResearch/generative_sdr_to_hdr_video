@@ -14,14 +14,14 @@ args = argparse.ArgumentParser()
 dataset = sys.argv[1]
 
 if dataset=="stuttgart":
-    data_path ="/data2/saikiran.tedla/hdrvideo/diff/data/stuttgart"
-    out_path = "/data2/saikiran.tedla/hdrvideo/diff/evaluations/stuttgart/"
+    data_path ="./data/stuttgart"
+    out_path = "./evaluations/stuttgart/"
     only_val = ["bistro_01", "bistro_02", "bistro_03", "showgirl_01", "showgirl_02", "smith_welding", "carousel_fireworks_02", "fireplace_01", "hdr_testimage"]
     #only_val = ["showgirl_01", "showgirl_02", "smith_welding", "carousel_fireworks_02", "fireplace_01", "hdr_testimage"]
 
 elif dataset == "ubc":
-    data_path = "/data2/saikiran.tedla/hdrvideo/diff/data/ubc"
-    out_path = "/data2/saikiran.tedla/hdrvideo/diff/evaluations/ubc/"
+    data_path = "./data/ubc"
+    out_path = "./evaluations/ubc/"
     only_val = [f for f in os.listdir(data_path) if os.path.isdir(os.path.join(data_path, f))]
     print("Videos to process:", only_val)
 h, w = 704, 1280
