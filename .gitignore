@@ -3,10 +3,14 @@ __pycache__/
 .DS_Store
 .env
 wandb/
+*.egg-info/
+/src/
 
 /models
 /*.mp4
 /data/
 /evaluations/
 /genvideos/
+/output/
+/slurm_logs/
 /tmp*

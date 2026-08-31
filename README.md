@@ -40,8 +40,57 @@ This repo is a trimmed-down, training/testing-focused fork of [DiffSynth-Studio]
 ## 🔧 Environment Setup
 
 ```bash
+conda create -n diffsynth python=3.10 -y
+conda activate diffsynth
 pip install -r requirements.txt
 pip install -e .
+```
+
+---
+
+## 🚀 Quick Start (try it now)
+
+A small demo clip is bundled in `assets/demo_input/` so you can verify everything works without any dataset setup. This requires the base [Wan2.2-TI2V-5B](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B) weights and a trained checkpoint — see **Model / checkpoint layout** below for where to put them.
+
+```bash
+conda activate diffsynth
+python inference.py --input_dir assets/demo_input --output_dir output/demo_output
+```
+
+Or, on a slurm cluster:
+
+```bash
+sbatch inference_slurm.sbatch                      # runs the demo clip
+sbatch inference_slurm.sbatch <input_dir> <out_dir> # or your own video
+```
+
+This loads the model (~1–2 min) and generates 17 HDR frames (~2 min more) as EXR files.
+
+### Model / checkpoint layout
+
+The code expects (relative to the repo root):
+
+```
+models/
+  Wan-AI/
+    Wan2.2-TI2V-5B/          # base video diffusion backbone
+    Wan2.1-T2V-1.3B/         # only used for its bundled T5 tokenizer (google/umt5-xxl)
+  train/<run_name>/
+    checkpoints/
+      epoch-N.safetensors            # fine-tuned Multi-Exposure Video Model (dit)
+      merge_checkpoint/
+        epoch-M.safetensors          # fine-tuned Video Merging Model (decoder)
+```
+
+`output_path` in the config must equal `models/train/<run_name>`, and `decoder_path` must point at the merge-decoder checkpoint. `set_load_paths()` (in `examples/wanvideo/model_training/train.py`) auto-resumes from the newest `epoch-*.safetensors` it finds under `<output_path>/checkpoints`. If you don't have your own trained checkpoints yet, train them first (see **Training** below) — `model_paths: null` with no checkpoints present just runs the base pretrained model untuned.
+
+If the weights already live elsewhere on disk (e.g. from a previous run), symlinking them into `models/` avoids a re-download:
+
+```bash
+mkdir -p models/Wan-AI models/train/<run_name>
+ln -s /path/to/Wan2.2-TI2V-5B          models/Wan-AI/Wan2.2-TI2V-5B
+ln -s /path/to/Wan2.1-T2V-1.3B         models/Wan-AI/Wan2.1-T2V-1.3B
+ln -s /path/to/your/checkpoints_dir    models/train/<run_name>/checkpoints
 ```
 
 ---
@@ -81,19 +130,22 @@ Edit `dataset_base_path`, `output_path`, and `decoder_path` in these configs to 
 
 ## 🧪 Testing
 
-Run the held-out validation/test pipeline:
+Run the held-out validation/test pipeline (all scenes/exposures found recursively under `evaluations/stuttgart/`, produced by `setup_splits.py`):
 
 ```bash
-bash test.sh   # uses diffsynth/configs/threeexposures_crffixed_test_val.yaml
+bash test.sh                 # single GPU, uses diffsynth/configs/threeexposures_crffixed_test_val.yaml
+sbatch test_slurm.sbatch     # same, submitted as a slurm job (qos=gpu1-32h, 1 GPU)
+sbatch test_slurm.sbatch path/to/other_config.yaml
 ```
 
-Or run inference on a single video:
+Or run inference on a single video (a folder of numbered PNG frames):
 
 ```bash
 python inference.py --input_dir <path_to_input_frames> --output_dir <output_dir>
+sbatch inference_slurm.sbatch <path_to_input_frames> <output_dir>
 ```
 
-Output is written as EXR frames (linear HDR radiance).
+Output is written as EXR frames (linear HDR radiance). Both paths were verified end-to-end on this repo (model load → checkpoint load → 50-step denoising → merge-decoder → EXR write).
 
 ---
 
@@ -103,13 +155,17 @@ Output is written as EXR frames (linear HDR radiance).
 diffsynth/                          # forked video-diffusion framework (Wan2.2 support + our additions)
   models/wan_video_dit.py           # Multi-Exposure Video Model
   models/wan_video_vae_merge_decoder.py  # Video Merging Model
+  pipelines/wan_video_sampler_scheduler.py  # autoregressive multi-exposure sampling scheduler
   trainers/stuttgart_dataset*.py    # dataset loaders
   configs/                          # training/testing configs
 examples/wanvideo/model_training/   # train.py / train_decoder.py entry points
+metrics/pu21.py                     # PU21 perceptually-uniform encode/decode (used by utils.py)
+assets/demo_input/                  # small bundled clip for a quick smoke test
 setup_splits.py                     # build train/val splits from raw dataset
 inference.py                        # single-video inference
 test.py                             # test/validation loop
 finetune.sh / finetune_decoder.sh / test.sh / val.sh
+test_slurm.sbatch / inference_slurm.sbatch  # slurm launchers (1 GPU, qos=gpu1-32h)
 ```
 
 ---

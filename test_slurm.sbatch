@@ -1,0 +1,40 @@
+#!/bin/bash
+#SBATCH --job-name=sdr2hdr_test
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --gpus-per-node=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=64gb
+#SBATCH --qos=gpu1-32h
+#SBATCH --time=08:00:00
+#SBATCH --output=slurm_logs/slurm-%j.out
+#SBATCH --error=slurm_logs/slurm-%j.err
+#
+# Runs the held-out validation/test pipeline on a single GPU via slurm.
+# Usage: sbatch test_slurm.sbatch [config_file]
+
+set -x -e
+
+SCRIPT_DIR="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+mkdir -p "$SCRIPT_DIR/slurm_logs"
+
+config_file="${1:-$SCRIPT_DIR/diffsynth/configs/threeexposures_crffixed_test_val.yaml}"
+
+source ~/miniconda3/etc/profile.d/conda.sh
+conda activate diffsynth
+cd "$SCRIPT_DIR"
+
+export PYTHONPATH="$SCRIPT_DIR:$PYTHONPATH"
+export OPENCV_IO_ENABLE_OPENEXR=1
+export NCCL_P2P_LEVEL=2
+export NCCL_P2P_DISABLE=1
+export NCCL_IB_TIMEOUT=22
+export TORCH_NCCL_BLOCKING_WAIT=0
+
+echo "START TIME: $(date)"
+echo "Node: $(hostname), GPUs visible: $CUDA_VISIBLE_DEVICES"
+
+accelerate launch --num_processes 1 --num_machines 1 --gpu_ids all --mixed_precision no \
+  test.py --config "$config_file"
+
+echo "END TIME: $(date)"

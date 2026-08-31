@@ -1,6 +1,6 @@
 import imageio, os, torch, warnings, torchvision, argparse, json
 
-from hdrvideo.diff.utils import generate_multi_exposure_video
+from utils import generate_multi_exposure_video
 from ..utils import ModelConfig
 from ..models.utils import load_state_dict
 from peft import LoraConfig, inject_adapter_in_model
