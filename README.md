@@ -4,6 +4,7 @@
 
 ### 📄 [Paper (arXiv)](https://arxiv.org/abs/2605.14703)
 ### 🌐 [Project Page](https://sdr2hdrvideo.github.io/)
+### 💾 [Data and Checkpoints](https://ln5.sync.com/dl/763f41330#eufvner4-ix38nwnh-yv79iqna-9pwzn4y8)
 
 ---
 
@@ -51,7 +52,7 @@ pip install -e .
 
 ## 📦 Downloads
 
-Trained checkpoints and evaluation data are too large for git, so they're distributed separately via **[this sync link](https://ln5.sync.com/dl/763f41330#eufvner4-ix38nwnh-yv79iqna-9pwzn4y8)**:
+Trained checkpoints and evaluation data are too large for git, so they're distributed separately via the **Data and Checkpoints** link at the top of this page:
 
 - **`checkpoints.zip`** — our trained unet + decoder checkpoints. See **Model / checkpoint layout** below.
 - **`inputs_gt.zip`** — SDR inputs + HDR ground truth for both eval datasets (stuttgart, ubc), for reproducing evaluation without the raw gated datasets. See **Dataset Setup** below.
