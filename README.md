@@ -49,6 +49,16 @@ pip install -e .
 
 ---
 
+## 📦 Downloads
+
+Trained checkpoints and evaluation data are too large for git, so they're distributed separately via **[this sync link](https://ln5.sync.com/dl/763f41330#eufvner4-ix38nwnh-yv79iqna-9pwzn4y8)**:
+
+- **`checkpoints.zip`** — our trained unet + decoder checkpoints. See **Model / checkpoint layout** below.
+- **`inputs_gt.zip`** — SDR inputs + HDR ground truth for both eval datasets (stuttgart, ubc), for reproducing evaluation without the raw gated datasets. See **Dataset Setup** below.
+- **`<method>.zip`** (e.g. `ours.zip`, containing `ours_stuttgart/` and `ours_ubc/`) — precomputed predictions for a given method, one zip per method as they're added. Unzip directly into `evaluations/` to use them with the metrics pipeline without re-running inference yourself — see **Metrics / Evaluation** below.
+
+---
+
 ## 🚀 Quick Start (try it now)
 
 A small demo clip is bundled in `assets/demo_input/` so you can verify everything works without any dataset setup. This requires the base [Wan2.2-TI2V-5B](https://huggingface.co/Wan-AI/Wan2.2-TI2V-5B) weights and a trained checkpoint — see **Model / checkpoint layout** below for where to put them.
@@ -85,7 +95,26 @@ models/
 
 `output_path` in the config must equal `models/train/<run_name>`, and `decoder_path` must point at the merge-decoder checkpoint. `set_load_paths()` (in `examples/wanvideo/model_training/train.py`) auto-resumes from the newest `epoch-*.safetensors` it finds under `<output_path>/checkpoints`. If you don't have your own trained checkpoints yet, train them first (see **Training** below) — `model_paths: null` with no checkpoints present just runs the base pretrained model untuned.
 
-If the weights already live elsewhere on disk (e.g. from a previous run), symlinking them into `models/` avoids a re-download:
+The base `Wan-AI/` weights auto-download the first time you run anything (from HuggingFace/ModelScope via `model_id_with_origin_paths` in the config) — no manual step needed there.
+
+**Using our trained checkpoints (`checkpoints.zip` — see Downloads above):** this repo's config (`diffsynth/configs/threeexposures_crffixed_test_val.yaml`) uses `run_name = three_exposures_crfchanging_multimode_17_val`. After downloading, from the repo root:
+
+```bash
+mkdir -p models/train/three_exposures_crfchanging_multimode_17_val
+unzip checkpoints.zip -d models/train/three_exposures_crfchanging_multimode_17_val/
+```
+
+This places `epoch-0.safetensors` (unet) and `merge_checkpoint/epoch-0.safetensors` (decoder) exactly where the config expects them — nothing else to configure.
+
+If you'd rather keep the 9.4GB extracted elsewhere (e.g. shared storage across multiple checkouts) and just link it in:
+
+```bash
+unzip checkpoints.zip -d /path/to/storage/
+mkdir -p models/train/three_exposures_crfchanging_multimode_17_val
+ln -s /path/to/storage/checkpoints models/train/three_exposures_crfchanging_multimode_17_val/checkpoints
+```
+
+The same pattern works for any other checkpoint directory already on disk (e.g. from a previous training run) — just symlink it in instead of unzipping:
 
 ```bash
 mkdir -p models/Wan-AI models/train/<run_name>
@@ -116,6 +145,14 @@ python setup_splits.py stuttgart
 data/ubc/<scene_name>/
 python setup_splits.py ubc
 ```
+
+**Skipping raw-dataset setup (`inputs_gt.zip` — see Downloads above):** if you just want to run/reproduce evaluation without gaining access to the raw gated datasets, this zip already contains exactly what `setup_splits.py` above would produce — SDR inputs (`auto`/`over`/`under`, first 17 frames/scene) and HDR ground truth (`hdr/`) for both datasets — so it replaces both `data/` and the `setup_splits.py` step entirely. From the repo root:
+
+```bash
+unzip inputs_gt.zip -d evaluations/
+```
+
+This gives you `evaluations/stuttgart/` and `evaluations/ubc/`, each with `auto/`, `over/`, `under/`, and `hdr/` subfolders — ready for **Testing** below. As with checkpoints, you can instead extract it to shared storage and symlink the two dataset folders into `evaluations/` if you'd rather not duplicate the ~4GB per checkout.
 
 Both commands write into `evaluations/<dataset>/<exposure_type>/<scene_name>/` (synthesized SDR input, read by `test.py`) and `evaluations/<dataset>/hdr/<scene_name>/` (HDR ground truth, read by the metrics pipeline).
 
@@ -182,7 +219,7 @@ python compute_metrics_parallel.py stuttgart ours auto   # dataset, method, expo
 python compute_metrics_parallel.py ubc ours under
 ```
 
-`method` is whatever `evaluations/<method>_<dataset>/` is named — `ours` is what `test.py` writes by default, but any other method's predictions dropped in alongside it (e.g. `evaluations/lediff_stuttgart/`) work the same way, no symlinks required.
+`method` is whatever `evaluations/<method>_<dataset>/` is named — `ours` is what `test.py` writes by default, but any other method's predictions dropped in alongside it (e.g. `evaluations/lediff_stuttgart/`) work the same way, no symlinks required. Precomputed predictions for a method are also distributed as `<method>.zip` (see **Downloads**) — unzip directly into `evaluations/` (e.g. `unzip ours.zip -d evaluations/` gives you `evaluations/ours_stuttgart/` and `evaluations/ours_ubc/`) to compute metrics without running **Testing** yourself.
 
 This writes one aggregate CSV per `(dataset, method, type)` plus one per-scene CSV to `metrics/eval_output/results_<method>_<dataset>_<type>_17_ds1.csv`. `metric_gathering.py` can drive this across many combinations at once (`--gpus 0,1,2,3 --workers-per-gpu N` to parallelize across GPUs) and skips any CSV that already exists, so it's safe to re-run after an interruption.
 
