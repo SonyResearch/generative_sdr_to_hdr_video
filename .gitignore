@@ -11,6 +11,7 @@ wandb/
 /*.zip
 /data/
 /evaluations/
+/eval_data_and_outputs/
 /genvideos/
 /output/
 /slurm_logs/
