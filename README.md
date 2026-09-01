@@ -97,17 +97,26 @@ ln -s /path/to/your/checkpoints_dir    models/train/<run_name>/checkpoints
 
 ## 📂 Dataset Setup
 
-Download the [Stuttgart HDR Video Dataset](http://hdm-hdr-2014.hdm-stuttgart.de/) yourself (access is gated by HDM Stuttgart) and place scenes under:
+**Training** uses the [Stuttgart HDR Video Dataset](http://hdm-hdr-2014.hdm-stuttgart.de/) (access is gated by HDM Stuttgart). Place scenes under:
 
 ```
 data/stuttgart/<scene_name>/
 ```
 
-Then build train/val splits:
+Then build train/val splits, which also synthesizes SDR input videos at several simulated exposure/auto-exposure settings (`under`, `over`, `under5`, `over20`, `normal`, `auto`) from the HDR ground truth:
 
 ```bash
 python setup_splits.py stuttgart
 ```
+
+**Evaluation** (see **Testing** below) additionally uses a second held-out dataset, referred to as **UBC**. Set it up the same way:
+
+```
+data/ubc/<scene_name>/
+python setup_splits.py ubc
+```
+
+Both commands write into `evaluations/<dataset>/<exposure_type>/<scene_name>/` (synthesized SDR input, read by `test.py`) and `evaluations/<dataset>/hdr/<scene_name>/` (HDR ground truth, read by the metrics pipeline).
 
 ---
 
@@ -130,13 +139,17 @@ Edit `dataset_base_path`, `output_path`, and `decoder_path` in these configs to 
 
 ## 🧪 Testing
 
-Run the held-out validation/test pipeline (all scenes/exposures found recursively under `evaluations/stuttgart/`, produced by `setup_splits.py`):
+Run the held-out validation/test pipeline. This runs every scene under `evaluations/<dataset>/<ae_type>/` (produced by `setup_splits.py`) through the model and writes predicted HDR frames to `evaluations/test_output_<dataset>/<ae_type>/<scene_name>/`:
 
 ```bash
-bash test.sh                 # single GPU, uses diffsynth/configs/threeexposures_crffixed_test_val.yaml
-sbatch test_slurm.sbatch     # same, submitted as a slurm job (qos=gpu1-32h, 1 GPU)
-sbatch test_slurm.sbatch path/to/other_config.yaml
+bash test.sh                              # dataset=stuttgart, ae_types=auto,over,under (defaults)
+bash test.sh ubc                          # test on the UBC dataset instead
+bash test.sh stuttgart normal,over20       # test other exposure modes
+sbatch test_slurm.sbatch                  # same, submitted as a slurm job (qos=gpu1-32h, 1 GPU)
+sbatch test_slurm.sbatch ubc auto,over,under
 ```
+
+Both scripts default to a single GPU but automatically scale to however many are available: `test.sh` uses however many device IDs are in `CUDA_VISIBLE_DEVICES` (e.g. `CUDA_VISIBLE_DEVICES=0,1,2,3 bash test.sh`), and `test_slurm.sbatch` uses however many GPUs slurm allocates (e.g. `sbatch --gpus-per-node=4 test_slurm.sbatch`) — scenes are split across GPUs via `accelerate`'s distributed data loading, no code changes needed.
 
 Or run inference on a single video (a folder of numbered PNG frames):
 
@@ -145,7 +158,34 @@ python inference.py --input_dir <path_to_input_frames> --output_dir <output_dir>
 sbatch inference_slurm.sbatch <path_to_input_frames> <output_dir>
 ```
 
-Output is written as EXR frames (linear HDR radiance). Both paths were verified end-to-end on this repo (model load → checkpoint load → 50-step denoising → merge-decoder → EXR write).
+Output is written as EXR frames (linear HDR radiance). Both paths were verified end-to-end on this repo (model load → checkpoint load → 50-step denoising → merge-decoder → EXR write), including a live multi-GPU run confirming scenes are correctly split across processes.
+
+---
+
+## 📊 Metrics / Evaluation
+
+`metrics/` computes the full-reference and no-reference HDR video quality metrics reported in the paper (CVVDP, HDR-VDP3, PU-PSNR, PU-VSI, PU-PIQE, PU-LPIPS, PU-TF, and PU/Drago/Mantiuk-tonemapped FID/FVD) by comparing predictions from **Testing** above against the HDR ground truth.
+
+This uses a separate conda environment from the main `diffsynth` one (different, newer package versions):
+
+```bash
+conda env create -f metrics/metrics_environment.yml -n hdrmetric   # or: pip install -r metrics/requirements.txt
+conda activate hdrmetric
+```
+
+Compute metrics for one `(dataset, exposure_type)` pair — reads predictions from `evaluations/test_output_<dataset>/<ae_type>/` (see **Testing**) and ground truth from `evaluations/<dataset>/hdr/`:
+
+```bash
+cd metrics
+python compute_metrics_parallel.py stuttgart release auto   # dataset, method (always "release" for this repo's own predictions), exposure type
+python compute_metrics_parallel.py ubc release under
+```
+
+This writes one aggregate CSV per `(dataset, type)` plus one per-scene CSV to `metrics/eval_output/results_release_<dataset>_<type>_17_ds1.csv`. `metric_gathering.py` can drive this across many `(dataset, type)` combinations at once (`--gpus 0,1,2,3 --workers-per-gpu N` to parallelize across GPUs) and skips any CSV that already exists, so it's safe to re-run after an interruption.
+
+We verified our numbers reproduce the paper's quantitative comparison table (within normal inference-nondeterminism noise, ≲1%) across both datasets and all three exposure settings — see [Repo Structure](#repo-structure) for where the resulting CSVs live.
+
+`ColorVideoVDP/` (CVVDP), `jpeg-ai-qaf-feature-HDR-VDP2.2-main/` (HDR-VDP3), and `NRVQA/` (PIQE) are vendored third-party metric implementations — see their own `README`/`LICENSE` files for attribution. `ColorVideoVDP` is [gfxdisp/ColorVideoVDP](https://github.com/gfxdisp/ColorVideoVDP) at commit `bf0ab37` plus one addition to `pycvvdp/vvdp_data/display_models.json` (a custom `ours_standard_hdr_linear` display profile used by all our CVVDP calls).
 
 ---
 
@@ -159,13 +199,18 @@ diffsynth/                          # forked video-diffusion framework (Wan2.2 s
   trainers/stuttgart_dataset*.py    # dataset loaders
   configs/                          # training/testing configs
 examples/wanvideo/model_training/   # train.py / train_decoder.py entry points
-metrics/pu21.py                     # PU21 perceptually-uniform encode/decode (used by utils.py)
+metrics/                            # HDR video quality metrics (separate "hdrmetric" conda env)
+  pu21.py                           # PU21 perceptually-uniform encode/decode (also used by utils.py)
+  compute_metrics_parallel.py       # per (dataset, method, exposure-type) metric computation
+  metric_gathering.py               # drives compute_metrics_parallel.py across many combinations
+  eval_output/                      # resulting per-scene/aggregate result CSVs
+  ColorVideoVDP/, jpeg-ai-qaf-feature-HDR-VDP2.2-main/, NRVQA/  # vendored metric implementations
 assets/demo_input/                  # small bundled clip for a quick smoke test
-setup_splits.py                     # build train/val splits from raw dataset
+setup_splits.py                     # build train/val splits + evaluation sets from raw datasets
 inference.py                        # single-video inference
-test.py                             # test/validation loop
+test.py                             # test/validation loop (multi-GPU via accelerate)
 finetune.sh / finetune_decoder.sh / test.sh / val.sh
-test_slurm.sbatch / inference_slurm.sbatch  # slurm launchers (1 GPU, qos=gpu1-32h)
+test_slurm.sbatch / inference_slurm.sbatch  # slurm launchers (defaults to 1 GPU, qos=gpu1-32h)
 ```
 
 ---

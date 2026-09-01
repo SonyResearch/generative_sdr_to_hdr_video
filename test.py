@@ -72,14 +72,23 @@ def validate(val_dataloader, model, accelerator, dataset, args):
 
 if __name__ == "__main__":
     parser = wan_parser()
+    parser.add_argument("--dataset", type=str, default="stuttgart", choices=["stuttgart", "ubc"],
+                         help="Evaluation dataset to test on.")
+    parser.add_argument("--ae-types", type=str, default="auto,over,under",
+                         help="Comma-separated exposure-mode subfolders to test, e.g. auto,over,under,normal,over20,under5.")
+    parser.add_argument("--out-path", type=str, default=None,
+                         help="Where to write predicted HDR frames (default: ./evaluations/test_output_<dataset>).")
     args = parser.parse_args()
     args = load_yaml_config(args, args.config)
     args = set_load_paths(args)
 
+    ae_types = [t.strip() for t in args.ae_types.split(",") if t.strip()]
+    out_path = args.out_path or f"./evaluations/test_output_{args.dataset}"
 
     val_dataset = VideoDataset(
-        base_path="./evaluations/stuttgart",
-        out_path = "./evaluations/ablatel2_stuttgart",
+        base_path=f"./evaluations/{args.dataset}",
+        out_path=out_path,
+        type_filter=ae_types,
         main_data_operator=VideoDataset.default_video_operator(
             num_frames=17,
             max_pixels=args.max_pixels,

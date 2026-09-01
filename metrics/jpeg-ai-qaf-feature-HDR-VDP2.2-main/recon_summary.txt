@@ -1,0 +1,5 @@
+No_rec_for_frame_0000.png_RATE006	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
+No_rec_for_frame_0000.png_RATE012	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
+No_rec_for_frame_0000.png_RATE025	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
+No_rec_for_frame_0000.png_RATE050	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1
+No_rec_for_frame_0000.png_RATE075	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1	-1

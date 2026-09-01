@@ -1,0 +1,11 @@
+IQA-pytorch==0.1
+numpy==1.19.1
+pre-commit==2.17.0
+psnr_hvsm==0.1.0
+pyrtools==1.0.0
+pytorch-msssim==0.2.1
+torch==1.3.0
+torchvision==0.4.1
+ptflops==0.6.5
+Pillow==6.2.2
+scipy==1.7.3

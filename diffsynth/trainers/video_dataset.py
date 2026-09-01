@@ -167,6 +167,7 @@ class VideoDataset(torch.utils.data.Dataset):
         out_path = None,
         main_data_operator=lambda x: x,
         special_operator_map=None,
+        type_filter=None,
     ):
         self.base_path = base_path
         self.out_path = out_path
@@ -175,9 +176,12 @@ class VideoDataset(torch.utils.data.Dataset):
         self.special_operator_map = {} if special_operator_map is None else special_operator_map
         self.cached_data = {}
         self.load_from_cache = False
+        # Optional: only keep folders whose path (relative to base_path) starts
+        # with one of these top-level subfolder names, e.g. ["auto", "over", "under"].
+        self.type_filter = type_filter
         self.load_data_from_path()
-    
-            
+
+
 
     def load_data_from_path(self):
         self.data = []
@@ -189,6 +193,12 @@ class VideoDataset(torch.utils.data.Dataset):
         # Find every png file recursively
         for png_path in base.rglob("*.png"):
             folders_with_pngs.add(png_path.parent)
+
+        if self.type_filter is not None:
+            folders_with_pngs = {
+                p for p in folders_with_pngs
+                if p.relative_to(base).parts[0] in self.type_filter
+            }
 
         # Store sorted folder list
         self.data = sorted([str(p) for p in folders_with_pngs])
