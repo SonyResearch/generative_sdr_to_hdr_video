@@ -75,15 +75,17 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="stuttgart", choices=["stuttgart", "ubc"],
                          help="Evaluation dataset to test on.")
     parser.add_argument("--ae-types", type=str, default="auto,over,under",
-                         help="Comma-separated exposure-mode subfolders to test, e.g. auto,over,under,normal,over20,under5.")
+                         help="Comma-separated exposure-mode subfolders to test, e.g. auto,over,under.")
+    parser.add_argument("--method", type=str, default="ours",
+                         help="Method name, used to name the output dir (default: ours).")
     parser.add_argument("--out-path", type=str, default=None,
-                         help="Where to write predicted HDR frames (default: ./evaluations/test_output_<dataset>).")
+                         help="Where to write predicted HDR frames (default: ./evaluations/<method>_<dataset>).")
     args = parser.parse_args()
     args = load_yaml_config(args, args.config)
     args = set_load_paths(args)
 
     ae_types = [t.strip() for t in args.ae_types.split(",") if t.strip()]
-    out_path = args.out_path or f"./evaluations/test_output_{args.dataset}"
+    out_path = args.out_path or f"./evaluations/{args.method}_{args.dataset}"
 
     val_dataset = VideoDataset(
         base_path=f"./evaluations/{args.dataset}",

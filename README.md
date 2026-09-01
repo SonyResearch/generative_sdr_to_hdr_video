@@ -12,13 +12,14 @@
 If you use our code or method, please cite:
 
 ```bibtex
-@article{Tedla2026SDR2HDR,
-  title   = {Generating HDR Video from SDR Video},
-  author  = {Tedla, SaiKiran and Banterle, Francesco and Canham, Trevor and Raja, Karanpreet
-             and Lindell, David B. and Kutulakos, Kiriakos N. and Li, Jiacheng and Li, Feiran
-             and Iso, Daisuke},
-  journal = {arXiv preprint arXiv:2605.14703},
-  year    = {2026}
+@inproceedings{Tedla2026SDR2HDR,
+  title     = {Generating HDR Video from SDR Video},
+  author    = {Tedla, SaiKiran and Banterle, Francesco and Canham, Trevor and Raja, Karanpreet
+               and Lindell, David B. and Kutulakos, Kiriakos N. and Li, Jiacheng and Li, Feiran
+               and Iso, Daisuke},
+  booktitle = {SIGGRAPH Asia 2026},
+  year      = {2026},
+  publisher = {ACM}
 }
 ```
 
@@ -103,7 +104,7 @@ ln -s /path/to/your/checkpoints_dir    models/train/<run_name>/checkpoints
 data/stuttgart/<scene_name>/
 ```
 
-Then build train/val splits, which also synthesizes SDR input videos at several simulated exposure/auto-exposure settings (`under`, `over`, `under5`, `over20`, `normal`, `auto`) from the HDR ground truth:
+Then build train/val splits, which also synthesizes SDR input videos at three simulated exposure/auto-exposure settings (`under`, `over`, `auto`) from the HDR ground truth:
 
 ```bash
 python setup_splits.py stuttgart
@@ -139,12 +140,12 @@ Edit `dataset_base_path`, `output_path`, and `decoder_path` in these configs to 
 
 ## 🧪 Testing
 
-Run the held-out validation/test pipeline. This runs every scene under `evaluations/<dataset>/<ae_type>/` (produced by `setup_splits.py`) through the model and writes predicted HDR frames to `evaluations/test_output_<dataset>/<ae_type>/<scene_name>/`:
+Run the held-out validation/test pipeline. This runs every scene under `evaluations/<dataset>/<ae_type>/` (produced by `setup_splits.py`) through the model and writes predicted HDR frames to `evaluations/<method>_<dataset>/<ae_type>/<scene_name>/`, where `<method>` defaults to `ours` (pass `--method` to `test.py` to change it). This naming convention lets you drop other methods' outputs alongside for comparison, e.g. `evaluations/lediff_stuttgart/`.
 
 ```bash
 bash test.sh                              # dataset=stuttgart, ae_types=auto,over,under (defaults)
 bash test.sh ubc                          # test on the UBC dataset instead
-bash test.sh stuttgart normal,over20       # test other exposure modes
+bash test.sh ubc auto                      # test just one exposure mode
 sbatch test_slurm.sbatch                  # same, submitted as a slurm job (qos=gpu1-32h, 1 GPU)
 sbatch test_slurm.sbatch ubc auto,over,under
 ```
@@ -173,15 +174,17 @@ conda env create -f metrics/metrics_environment.yml -n hdrmetric   # or: pip ins
 conda activate hdrmetric
 ```
 
-Compute metrics for one `(dataset, exposure_type)` pair — reads predictions from `evaluations/test_output_<dataset>/<ae_type>/` (see **Testing**) and ground truth from `evaluations/<dataset>/hdr/`:
+Compute metrics for one `(dataset, method, exposure_type)` triple — reads predictions from `evaluations/<method>_<dataset>/<ae_type>/` (see **Testing**) and ground truth from `evaluations/<dataset>/hdr/`:
 
 ```bash
 cd metrics
-python compute_metrics_parallel.py stuttgart release auto   # dataset, method (always "release" for this repo's own predictions), exposure type
-python compute_metrics_parallel.py ubc release under
+python compute_metrics_parallel.py stuttgart ours auto   # dataset, method, exposure type
+python compute_metrics_parallel.py ubc ours under
 ```
 
-This writes one aggregate CSV per `(dataset, type)` plus one per-scene CSV to `metrics/eval_output/results_release_<dataset>_<type>_17_ds1.csv`. `metric_gathering.py` can drive this across many `(dataset, type)` combinations at once (`--gpus 0,1,2,3 --workers-per-gpu N` to parallelize across GPUs) and skips any CSV that already exists, so it's safe to re-run after an interruption.
+`method` is whatever `evaluations/<method>_<dataset>/` is named — `ours` is what `test.py` writes by default, but any other method's predictions dropped in alongside it (e.g. `evaluations/lediff_stuttgart/`) work the same way, no symlinks required.
+
+This writes one aggregate CSV per `(dataset, method, type)` plus one per-scene CSV to `metrics/eval_output/results_<method>_<dataset>_<type>_17_ds1.csv`. `metric_gathering.py` can drive this across many combinations at once (`--gpus 0,1,2,3 --workers-per-gpu N` to parallelize across GPUs) and skips any CSV that already exists, so it's safe to re-run after an interruption.
 
 We verified our numbers reproduce the paper's quantitative comparison table (within normal inference-nondeterminism noise, ≲1%) across both datasets and all three exposure settings — see [Repo Structure](#repo-structure) for where the resulting CSVs live.
 

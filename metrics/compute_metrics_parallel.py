@@ -70,7 +70,7 @@ EVAL_BASE        = "/datasets/gencamedit/hdreval/evaluations_transfer"
 # EVAL_BASE        = "/projects/gencamedit/hdreval/evaluations"
 EVAL_OUTPUT_DIR  = "/datasets/sai/sdr2hdrvid/metrics/eval_output"
 DATASETS         = ("stuttgart", "ubc")
-METHODS = ( "oursapr21", "eilertsen_pytorch_crf", "ltx", "lediff", "x2hdr", "single_crf", "dvitmo_crf",  "zhdrv_crf", "hdrtv_crf", "ablatedebevec", "ablatel2", "ablaterope", "oursmay5", "release")
+METHODS = ( "oursapr21", "eilertsen_pytorch_crf", "ltx", "lediff", "x2hdr", "single_crf", "dvitmo_crf",  "zhdrv_crf", "hdrtv_crf", "ablatedebevec", "ablatel2", "ablaterope", "oursmay5", "ours")
 
 
 
@@ -162,29 +162,33 @@ def parse_args():
     return parser.parse_args()
 
 
-def _find_eval_dir(base: str, method: str, dataset: str) -> str:
+def _find_eval_dir(base: str, method: str, dataset: str) -> Optional[str]:
     from pathlib import Path as _Path
     for name in (f"{method}_{dataset}", f"{dataset}_{method}"):
         p = _Path(base) / name
         if p.is_dir():
             return str(p)
-    raise FileNotFoundError(
-        f"No evaluation directory found for method='{method}' dataset='{dataset}' "
-        f"(tried '{method}_{dataset}' and '{dataset}_{method}' under {base})"
-    )
+    return None
 
 
 args = parse_args()
 gt_dir   = os.path.join(EVAL_BASE, args.dataset, "hdr")
-if args.method == "release":
-    # Predictions from this repo's own test.py, kept local to the release
-    # checkout rather than requiring a symlink into the shared EVAL_BASE tree.
-    pred_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-        "evaluations", f"test_output_{args.dataset}", args.type,
+
+# Predictions are named "<method>_<dataset>" (e.g. "ours_stuttgart",
+# "lediff_stuttgart"). Prefer a copy kept locally in this repo's own
+# evaluations/ dir (what test.py writes to) over the shared EVAL_BASE tree,
+# so self-contained method comparisons work without anything symlinked in.
+_repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_local_dir = _find_eval_dir(os.path.join(_repo_root, "evaluations"), args.method, args.dataset)
+_shared_dir = None if _local_dir else _find_eval_dir(EVAL_BASE, args.method, args.dataset)
+_eval_dir = _local_dir or _shared_dir
+if _eval_dir is None:
+    raise FileNotFoundError(
+        f"No evaluation directory found for method='{args.method}' dataset='{args.dataset}' "
+        f"(tried '{args.method}_{args.dataset}' and '{args.dataset}_{args.method}' under "
+        f"{os.path.join(_repo_root, 'evaluations')} and {EVAL_BASE})"
     )
-else:
-    pred_dir = os.path.join(_find_eval_dir(EVAL_BASE, args.method, args.dataset), args.type)
+pred_dir = os.path.join(_eval_dir, args.type)
 
 print(f"GT Directory:   {gt_dir}")
 print(f"Pred Directory: {pred_dir}")

@@ -46,23 +46,6 @@ def read_exr_image(exr_path):
     
 
 
-def exposure_scale(frame, p, mode, lo=0.0, hi=1.0, eps=1e-8):
-
-    if mode == "over":   # p pixels clip to hi
-        #do max over channels
-        x = frame.max(axis=2).ravel()
-        q = np.quantile(x, 1.0 - p)
-        return hi / (q + eps)
-    if mode == "under":  # p pixels fall below 0.5/255 after gamma
-        q = -10
-        while q < 0:
-            #do min over channels
-            x = frame.min(axis=2).ravel()
-            q = np.quantile(x, p)
-            p+=0.05
-        return ((0.5/ 255) ** 2.2)  / (q + eps)
-    raise ValueError("mode must be 'over' or 'under'")
-
 def create_input_sequence(frame_paths, ae_type):
     hdr_video = np.zeros((len(frame_paths), h, w, 3), dtype=np.float32)
 
@@ -73,18 +56,9 @@ def create_input_sequence(frame_paths, ae_type):
     if ae_type == "over":
         #use first frame
         exposures = exposures * np.log2(0.7 / (hdr_video[0].mean() + 1e-8))
-    elif ae_type == "over20":
-        #use first frame
-        exposures = exposures * np.log2(exposure_scale(hdr_video[0], p=0.2, mode="over"))
     elif ae_type == "under":
         #use first frame
         exposures = exposures * np.log2(0.01 / (hdr_video[0].mean() + 1e-8))
-    elif ae_type == "under5":
-        #use first frame
-        exposures = exposures * np.log2(exposure_scale(hdr_video[0], p=0.05, mode="under"))
-    elif ae_type == "normal":
-        #use first frame
-        exposures = exposures * np.log2(0.25 / (hdr_video[0].mean() + 1e-8))
     elif ae_type == "auto":
         #make mean 0.25 for each frame
         exposures = np.log2(0.25 / (hdr_video.mean(axis=(1, 2, 3)) + 1e-8))
@@ -112,8 +86,8 @@ def write_sdr_frames(sdr_video, out_dir):
 
 for video_name in only_val:
     video_path = os.path.join(data_path, video_name)
-    frame_paths = get_frame_paths(video_path, num_frames=100)
-    types = ["under", "over", "under5", "over20", "normal", "auto"]
+    frame_paths = get_frame_paths(video_path, num_frames=17)  # matches test.py's VideoDataset(num_frames=17)
+    types = ["under", "over", "auto"]
     print(f"Processing video {video_name} with {len(frame_paths)} frames...")
     for ae_type in types:
         exposures, sdr_video, hdr_video = create_input_sequence(frame_paths, ae_type)
