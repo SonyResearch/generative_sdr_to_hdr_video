@@ -8,6 +8,7 @@ wandb/
 
 /models
 /*.mp4
+/*.zip
 /data/
 /evaluations/
 /genvideos/
