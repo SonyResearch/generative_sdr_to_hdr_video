@@ -56,7 +56,7 @@ Trained checkpoints and evaluation data are too large for git, so they're distri
 
 - **`checkpoints.zip`** — our trained unet + decoder checkpoints. See **Model / checkpoint layout** below.
 - **`inputs_gt.zip`** — SDR inputs + HDR ground truth for both eval datasets (stuttgart, ubc), for reproducing evaluation without the raw gated datasets. See **Dataset Setup** below.
-- **`<method>.zip`** (e.g. `ours.zip`, containing `ours_stuttgart/` and `ours_ubc/`) — precomputed predictions for a given method, one zip per method as they're added. Unzip directly into `evaluations/` to use them with the metrics pipeline without re-running inference yourself — see **Metrics / Evaluation** below.
+- **`<method>.zip`** (e.g. `ours.zip`, containing `ours_stuttgart/` and `ours_ubc/`) — precomputed predictions for a given method. Zips for the other baseline methods' results are there too, if you want to run your own comparisons without regenerating them. Unzip directly into `evaluations/` to use them with the metrics pipeline without re-running inference yourself — see **Metrics / Evaluation** below.
 
 ---
 
